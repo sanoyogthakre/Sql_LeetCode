@@ -1,0 +1,99 @@
+-- | second_player | int     | 
+-- | first_score   | int     |
+-- | second_score  | int     |
+-- +---------------+---------+
+-- match_id is the primary key of this table.
+-- Each row is a record of a match, first_player and second_player contain the player_id of each match.
+-- first_score and second_score contain the number of points of the first_player and second_player respectively.
+-- You may assume that, in each match, players belongs to the same group.
+ 
+
+-- The winner in each group is the player who scored the maximum total points within the group. In the case of a tie, 
+-- the lowest player_id wins.
+
+-- Write an SQL query to find the winner in each group.
+
+-- The query result format is in the following example:
+
+-- Players table:
+-- +-----------+------------+
+-- | player_id | group_id   |
+-- +-----------+------------+
+-- | 15        | 1          |
+-- | 25        | 1          |
+-- | 30        | 1          |
+-- | 45        | 1          |
+-- | 10        | 2          |
+-- | 35        | 2          |
+-- | 50        | 2          |
+-- | 20        | 3          |
+-- | 40        | 3          |
+-- +-----------+------------+
+
+-- Matches table:
+-- +------------+--------------+---------------+-------------+--------------+
+-- | match_id   | first_player | second_player | first_score | second_score |
+-- +------------+--------------+---------------+-------------+--------------+
+-- | 1          | 15           | 45            | 3           | 0            |
+-- | 2          | 30           | 25            | 1           | 2            |
+-- | 3          | 30           | 15            | 2           | 0            |
+-- | 4          | 40           | 20            | 5           | 2            |
+-- | 5          | 35           | 50            | 1           | 1            |
+-- +------------+--------------+---------------+-------------+--------------+
+
+-- Result table:
+-- +-----------+------------+
+-- | group_id  | player_id  |
+-- +-----------+------------+ 
+-- | 1         | 15         |
+-- | 2         | 35         |
+-- | 3         | 40         |
+-- +-----------+------------+
+
+Create Table Players (Player_Id int, Group_id int)
+
+Create Table Matches (Match_Id int, First_player int, Second_Player int, First_Score int, Second_Score int)
+
+Insert INTO Players Values 
+(15, 1), (25, 1), (30, 1), (45, 1), (10, 2), (35, 2), (50, 2), (20,3), (40, 3)
+
+Insert INTO Matches  Values 
+(1, 15, 45, 3, 0),
+(2, 30, 25, 1, 2),
+(3, 30, 15, 2, 0),
+(4, 40, 20, 5, 2),
+(5, 35, 50, 1, 1)
+
+Select * from players;
+select * from matches;
+
+WITH Player_Score AS
+(
+Select First_player as player_id, First_Score as score FROM Matches
+UNION ALL
+Select Second_Player as player_id, Second_Score as score FROM Matches
+),
+final_score as(
+Select p.Group_id,ps.player_id, sum(score)  as score from Player_Score ps
+INNER JOIN Players p ON p.Player_Id = ps.player_id GROUP by p.Group_id,ps.player_id
+),final_ranking as(
+Select * 
+,RANK() OVER(PARTITION BY group_id order by  score DESC,player_id asc) as Rank
+FROM final_score)
+Select Group_id,player_id,score FROM final_ranking where Rank = 1
+
+
+WITH DATA As
+(
+Select max(p.player_id) as Player_id,sum(m.first_score) as firstTotalScore,p.group_id 
+FROM players p
+inner join matches m ON p.player_id = m.first_player
+GROUP BY p.group_id
+UNION
+Select max(p.player_id) as Player_id,SUM(c.second_score) as SecondTotalScore,p.group_id
+FROM players p
+inner join matches c oN p.player_id = c. second_player
+GROUP BY p.group_id
+) 
+SELECT  max(Player_id),MAX(firstTotalScore),group_id
+ FROM DATA GROUP BY group_id
